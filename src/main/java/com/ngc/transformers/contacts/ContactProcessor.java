@@ -39,6 +39,7 @@ public class ContactProcessor {
 		//parentAccounts.show();
 		
 		Column parentAccountID = concat_ws("_", col("company"), col("customerCode"));
+		Column futureCouchID = concat_ws("_", col("company"), col("customerCode"));
 		Column compositeStreetAddress = concat_ws(" ", col("address1"), col("address2"), col("address3"));
 		Column contactType = when(col("contactType").equalTo("M"), lit("MC")).when(col("contactType").equalTo("S"), lit("SH")).otherwise(col("contactType"));
 		Column emailAddress = when(callUDF("isValidEmail", col("emailAddress")), col("emailAddress")).otherwise(lit("email@unkown.com"));
@@ -84,6 +85,7 @@ public class ContactProcessor {
 		
 		childrenData = childrenData.withColumn("composite_street", compositeStreetAddress);
 		childrenData = childrenData.withColumn("parentAccountID", parentAccountID);
+		childrenData = childrenData.withColumn("futureCouchID", futureCouchID);
 		childrenData = childrenData.withColumn("contactType", contactType);
 		childrenData = childrenData.withColumn("emailAddress", emailAddress);
 		childrenData.show();
