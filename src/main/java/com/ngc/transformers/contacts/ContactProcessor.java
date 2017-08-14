@@ -32,7 +32,7 @@ public class ContactProcessor {
 			}
 		}, DataTypes.BooleanType);
 		
-		Dataset<Row> childrenData = spark.read().option("header", true).csv("C:\\Users\\Alien\\Downloads\\Contacts\\bulk_loading\\contacts_all_small.csv");
+		Dataset<Row> childrenData = spark.read().option("header", true).csv("C:\\Users\\Alien\\Downloads\\Contacts\\bulk_loading\\contacts_all.csv");
 		childrenData.show();
 		
 		Dataset<Row> parentAccounts = spark.read().csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_bulk_all.csv");
@@ -87,7 +87,7 @@ public class ContactProcessor {
 		childrenData = childrenData.withColumn("composite_street", compositeStreetAddress);
 		childrenData = childrenData.withColumn("parentAccountID", parentAccountID);
 		childrenData = childrenData.withColumn("futureCouchID", futureCouchID);
-		childrenData = childrenData.withColumn("contactType", contactType);
+		//childrenData = childrenData.withColumn("contactType", contactType);
 		childrenData = childrenData.withColumn("email", emailAddress);
 		childrenData = childrenData.withColumn("primary", primary);
 		childrenData.show();
@@ -98,39 +98,15 @@ public class ContactProcessor {
 		parentAccounts.createOrReplaceTempView("parentAccounts");
 		Dataset<Row> joinedData = spark.sql("select a.* from mutatedChildrenData as a inner join parentAccounts as b on a.parentAccountID = b._c0");
 		*/
-		
-		// Min(Case DBColumnName When 'MiddleName' Then Data End) MiddleName,
-		/*
-		SELECT
-		main.CustomerID,
-		f.Data AS FirstName,
-		m.Data AS MiddleName,
-		l.Data AS LastName,
-		d.Data AS Date
-		FROM table main
-		INNER JOIN table f on f.CustomerID = main.CustomerID
-		INNER JOIN table m on m.CustomerID = main.CustomerID
-		INNER JOIN table l on l.CustomerID = main.CustomerID
-		INNER JOIN table d on d.CustomerID = main.CustomerID
-		WHERE f.DBColumnName = 'FirstName' 
-		AND m.DBColumnName = 'MiddleName' 
-		AND l.DBColumnName = 'LastName' 
-		AND d.DBColumnName = 'Date' 
-		*/
-		/**
-		   Select CustomerID,
-		     Min(Case DBColumnName When 'FirstName' Then Data End) FirstName,
-		     Min(Case DBColumnName When 'MiddleName' Then Data End) MiddleName,
-		     Min(Case DBColumnName When 'LastName' Then Data End) LastName,
-		     Min(Case DBColumnName When 'Date' Then Data End) Date
-		   From table
-		   Group By CustomerId
-		   */
-		
+				
 		Dataset<Row> joinedData = spark.sql("select a.company, a.customerCode, first(a.name) as name, first(a.firstName) as firstName, first(a.lastName) as lastName, first(a.phone) as phone, "
 				+ "first(a.fax) as fax, first(a.dear) as dear, first(a.title) as title, first(a.phoneExt) as phoneExt, first(a.email) as email, first(a.zip) as zip, first(a.city) as city, "
 				+ "first(a.state) as state, first(a.address1) as address1, first(a.address2) as address2, first(a.address3) as address3, "
-				+ "first(a.country) as country, first(a.international) as international, max(a.primary) as primary, "
+				+ "first(a.country) as country, first(a.international) as international, "
+				+ "max(a.primary) as primary, "
+				+ "max(a.parentAccountID) as parentAccountID, "
+				+ "max(a.composite_street) as compositeStreet, "
+				+ "max(a.futureCouchID) as futureCouchID, "
 				+ "max(case when a.recapRCCouchID is not null then a.recapRCCouchID else 0 end) couch_id_RC, "
 				+ "max(case when a.recapACCouchID is not null then a.recapACCouchID else 0 end) couch_id_AC, "
 				+ "max(case when a.recapSHCouchID is not null then a.recapSHCouchID else 0 end) couch_id_SH, "
@@ -141,7 +117,7 @@ public class ContactProcessor {
 				+ "max(case when a.recapGR = 1 then 1 else 0 end) recapGR "
 				+ "from mutatedChildrenData as a group by a.company, a.customerCode");
 		joinedData.show();
-		//joinedData.write().option("header", true).csv("C:\\Users\\Alien\\Downloads\\Contacts\\bulk_loading\\contacts_all_processed_small.csv");
+		joinedData.write().option("header", false).csv("C:\\Users\\Alien\\Downloads\\Contacts\\bulk_loading\\contacts_all_processed.csv");
 		
 		spark.stop();
 	}
