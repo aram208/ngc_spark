@@ -43,6 +43,7 @@ public class ContactProcessor {
 		Column compositeStreetAddress = concat_ws(" ", col("address1"), col("address2"), col("address3"));
 		Column contactType = when(col("contactType").equalTo("M"), lit("MC")).when(col("contactType").equalTo("S"), lit("SH")).otherwise(col("contactType"));
 		Column emailAddress = when(callUDF("isValidEmail", col("email")), col("email")).otherwise(lit("email@unkown.com"));
+		Column primary = when(not(isnull(col("primary"))), col("primary")).otherwise(lit("0"));
 		
 		Column recapMC = when(col("contactType").equalTo("M").or(col("contactType").equalTo("MC")), lit("1")).otherwise(lit("0"));
 		Column recapSH = when(col("contactType").equalTo("S").or(col("contactType").equalTo("SH")), lit("1")).otherwise(lit("0"));
@@ -88,6 +89,7 @@ public class ContactProcessor {
 		childrenData = childrenData.withColumn("futureCouchID", futureCouchID);
 		childrenData = childrenData.withColumn("contactType", contactType);
 		childrenData = childrenData.withColumn("email", emailAddress);
+		childrenData = childrenData.withColumn("primary", primary);
 		childrenData.show();
 		
 		Dataset<Row> mutatedChildrenData = childrenData;
@@ -125,7 +127,10 @@ public class ContactProcessor {
 		   Group By CustomerId
 		   */
 		
-		Dataset<Row> joinedData = spark.sql("select a.company, a.customerCode, first(a.name) as name, "
+		Dataset<Row> joinedData = spark.sql("select a.company, a.customerCode, first(a.name) as name, first(a.firstName) as firstName, first(a.lastName) as lastName, first(a.phone) as phone, "
+				+ "first(a.fax) as fax, first(a.dear) as dear, first(a.title) as title, first(a.phoneExt) as phoneExt, first(a.email) as email, first(a.zip) as zip, first(a.city) as city, "
+				+ "first(a.state) as state, first(a.address1) as address1, first(a.address2) as address2, first(a.address3) as address3, "
+				+ "first(a.country) as country, first(a.international) as international, max(a.primary) as primary, "
 				+ "max(case when a.recapRCCouchID is not null then a.recapRCCouchID else 0 end) couch_id_RC, "
 				+ "max(case when a.recapACCouchID is not null then a.recapACCouchID else 0 end) couch_id_AC, "
 				+ "max(case when a.recapSHCouchID is not null then a.recapSHCouchID else 0 end) couch_id_SH, "
