@@ -39,7 +39,7 @@ public class ContactProcessor {
 		//parentAccounts.show();
 		
 		Column parentAccountID = concat_ws("_", col("company"), col("customerCode"));
-		Column futureCouchID = concat_ws("_", col("company"), col("customerCode"));
+		Column futureCouchID = concat_ws("_", col("company"), col("customerCode"), col("email"));
 		Column compositeStreetAddress = concat_ws(" ", col("address1"), col("address2"), col("address3"));
 		Column contactType = when(col("contactType").equalTo("M"), lit("MC")).when(col("contactType").equalTo("S"), lit("SH")).otherwise(col("contactType"));
 		Column emailAddress = when(callUDF("isValidEmail", col("email")), col("email")).otherwise(lit("email@unkown.com"));
@@ -115,9 +115,9 @@ public class ContactProcessor {
 				+ "max(case when a.recapAC = 1 then 1 else 0 end) recapAC, "
 				+ "max(case when a.recapSH = 1 then 1 else 0 end) recapSH, "
 				+ "max(case when a.recapGR = 1 then 1 else 0 end) recapGR "
-				+ "from mutatedChildrenData as a group by a.company, a.customerCode");
+				+ "from mutatedChildrenData as a group by a.company, a.customerCode, a.email order by a.company");
 		joinedData.show();
-		joinedData.write().option("header", false).csv("C:\\Users\\Alien\\Downloads\\Contacts\\bulk_loading\\contacts_all_processed.csv");
+		joinedData.write().option("header", true).csv("C:\\Users\\Alien\\Downloads\\Contacts\\bulk_loading\\contacts_all_processed.csv");
 		
 		spark.stop();
 	}
