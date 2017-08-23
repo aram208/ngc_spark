@@ -9,6 +9,7 @@ import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.not;
 import static org.apache.spark.sql.functions.substring;
 import static org.apache.spark.sql.functions.when;
+import static org.apache.spark.sql.functions.rtrim;
 
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
@@ -31,11 +32,11 @@ public class ChildrenAccountsPreprocessor {
 				.master("local")
 				.getOrCreate();
 		
-		Dataset<Row> childrenData = spark.read().csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_bulk_children.csv");
+		Dataset<Row> childrenData = spark.read().option("header", true).csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_all_children.csv");
 		childrenData.show();
 		
-		Dataset<Row> parentData = spark.read().csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_bulk_parents.csv");
-		parentData.show();
+//		Dataset<Row> parentData = spark.read().option("header", true).csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_all_parents.csv");
+//		parentData.show();
 		
 		spark.sqlContext().udf().register("getCustomerCode", new UDF1<String, String>(){
 			public String call(String outputData){
@@ -57,7 +58,7 @@ public class ChildrenAccountsPreprocessor {
 		}, DataTypes.BooleanType);
 		
 		//childrenData.createOrReplaceTempView("childrenData");
-		parentData.createOrReplaceTempView("parentData");
+		//parentData.createOrReplaceTempView("parentData");
 		
 		/**
 		Column recordTypeSFId = 
@@ -70,56 +71,59 @@ public class ChildrenAccountsPreprocessor {
 		*/
 		
 		Column recordTypeSFId = 
-				when(col("_c4").equalTo("DEALER"), "01241000000Qkuv")  // dealer
-				.when(col("_c4").equalTo("INACTIVE"), "INACTIVE")
+				when(col("accountType").equalTo("DEALER"), "01241000000Qkuv")  // dealer
+				.when(col("accountType").equalTo("INACTIVE"), "INACTIVE")
 				.otherwise("01241000000k3qx");
 		
-		Column calculatedCSTier = when(col("_c4").equalTo("DEALER"), lit("Dealer"))
-				.when(col("_c4").equalTo("ACTIVE"), lit("None"))
-				.when(col("_c4").equalTo("ANA"), lit("None"))
-				.when(col("_c4").equalTo("ASSOC"), lit("Associate"))
-				.when(col("_c4").equalTo("CANCEL"), lit("None"))
-				.when(col("_c4").equalTo("CHARTER"), lit("None"))
-				.when(col("_c4").equalTo("ELITE"), lit("Elite"))
-				.when(col("_c4").equalTo("FREE"), lit("Free"))
-				.when(col("_c4").equalTo("PREM"), lit("Premium"))
-				.when(col("_c4").equalTo("SUB"), lit("None"))
-				.when(col("_c4").equalTo("UNKNOWN"), lit("None"))
+		Column calculatedCSTier = 
+				 when(col("accountType").equalTo("DEALER"), lit("Dealer"))
+				.when(col("accountType").equalTo("ACTIVE"), lit("None"))
+				.when(col("accountType").equalTo("ANA"), lit("None"))
+				.when(col("accountType").equalTo("ASSOC"), lit("Associate"))
+				.when(col("accountType").equalTo("CANCEL"), lit("None"))
+				.when(col("accountType").equalTo("CHARTER"), lit("None"))
+				.when(col("accountType").equalTo("ELITE"), lit("Elite"))
+				.when(col("accountType").equalTo("FREE"), lit("Free"))
+				.when(col("accountType").equalTo("PREM"), lit("Premium"))
+				.when(col("accountType").equalTo("SUB"), lit("None"))
+				.when(col("accountType").equalTo("UNKNOWN"), lit("None"))
 				.otherwise(lit("None"));
 		
-		Column emailC = when(callUDF("isValidEmail", col("_c48")), col("_c48")).otherwise(lit("email@unkown.com")); 
+		Column emailC = when(callUDF("isValidEmail", col("contact_email")), col("contact_email")).otherwise(lit("email@unkown.com")); 
 		
-		Column cityName = when(length(col("_c52")).gt(40), substring(col("_c52"), 0, 39)).otherwise(col("_c52"));
+		Column cityName = when(length(col("contact_address_city")).gt(40), substring(col("contact_address_city"), 0, 39)).otherwise(col("contact_address_city"));
 		
-		Column accountName = when(isnull(col("_c44")), lit("NAME MISSING")).otherwise(col("_c44"));
+		Column accountName = when(isnull(col("contact_name")), lit("NAME MISSING")).otherwise(col("contact_name"));
 		
-		Column countryTitleCased = when(not(isnull(col("_c55"))).and(length(col("_c55")).gt(2)), callUDF("titleCase", col("_c55")) ).otherwise(col("_c55"));
+		Column countryTitleCased = when(not(isnull(col("contact_address_country"))).and(length(col("contact_address_country")).gt(2)), callUDF("titleCase", col("contact_address_country")) ).otherwise(col("contact_address_country"));
 		
-		Column imagePreferences = when(col("_c73").equalTo("1"), lit("Low Resolution")).otherwise("None");
+		Column imagePreferences = when(col("pref_imaging").equalTo("1"), lit("Low Resolution")).otherwise("None");
 		
-		childrenData = childrenData.withColumn("_c48", emailC);
-		childrenData = childrenData.withColumn("_c52", cityName);
-		childrenData = childrenData.withColumn("_c44", accountName);
-		childrenData = childrenData.withColumn("_c55", countryTitleCased);
-		childrenData = childrenData.withColumn("_c73", imagePreferences);
+		childrenData = childrenData.withColumn("contact_email", emailC);
+		childrenData = childrenData.withColumn("contact_address_city", cityName);
+		childrenData = childrenData.withColumn("contact_name", accountName);
+		childrenData = childrenData.withColumn("contact_address_country", countryTitleCased);
+		childrenData = childrenData.withColumn("pref_imaging", imagePreferences);
 		
-		childrenData = childrenData.withColumn("composite_street", concat_ws(" ", col("_c49"), col("_c50"), col("_c51")));
-		childrenData = childrenData.withColumn("composite_notes", concat_ws(" ", col("_c56"), col("_c57")));
+		childrenData = childrenData.withColumn("composite_street", rtrim(concat_ws(" ", col("contact_address_address1"), col("contact_address_address2"), col("contact_address_address3"))));
+		childrenData = childrenData.withColumn("composite_notes", rtrim(concat_ws(" ", col("notes_note1"), col("notes_note2"))));
 		childrenData = childrenData.withColumn("record_type_id", recordTypeSFId);
 		childrenData = childrenData.withColumn("CalculatedCSTier", calculatedCSTier);
-		
 		
 		childrenData.show();
 		
 		Dataset<Row> mutatedChildrenData = childrenData;
 		mutatedChildrenData.createOrReplaceTempView("mutatedChildrenData");
-				
+		
+		Dataset<Row> joinedData = spark.sql("select a.* from mutatedChildrenData as a where a.accountType <> 'INACTIVE' order by a.company");
+		
+		/*
 		Dataset<Row> joinedData = spark.sql("select a.*, b._c0 as parent_id from mutatedChildrenData as a left join parentData as b on a._c3 = getCustomerCode(b._c0) where a._c4 <> 'INACTIVE' "
-				+ "and (a._c2 = 'NGC' or (a._c2 = 'NCS' or a._c2 = 'PMG'))");
+				+ "and (a._c2 = 'NGC' or (a._c2 = 'NCS' or a._c2 = 'PMG')) order by a._c2");
 		
 		joinedData.show();
-		
-		joinedData.write().csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_bulk_children_processed.csv");
+		*/
+		joinedData.write().csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_children_processed.csv");
 		
 		spark.stop();
 	}
