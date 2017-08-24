@@ -20,7 +20,7 @@ import org.apache.spark.sql.types.DataTypes;
 
 import com.ngc.transformers.utils.EmailValidator;
 
-public class ChildrenAccountsPreprocessor {
+public class ChildrenAccountsProcessor {
 	
 	public static void main(String[] args){
 		
@@ -75,7 +75,7 @@ public class ChildrenAccountsPreprocessor {
 				.when(col("accountType").equalTo("INACTIVE"), "INACTIVE")
 				.otherwise("01241000000k3qx");
 		
-		Column calculatedCSTier = 
+		Column calculatedAccountType = 
 				 when(col("accountType").equalTo("DEALER"), lit("Dealer"))
 				.when(col("accountType").equalTo("ACTIVE"), lit("None"))
 				.when(col("accountType").equalTo("ANA"), lit("None"))
@@ -108,14 +108,14 @@ public class ChildrenAccountsPreprocessor {
 		childrenData = childrenData.withColumn("composite_street", rtrim(concat_ws(" ", col("contact_address_address1"), col("contact_address_address2"), col("contact_address_address3"))));
 		childrenData = childrenData.withColumn("composite_notes", rtrim(concat_ws(" ", col("notes_note1"), col("notes_note2"))));
 		childrenData = childrenData.withColumn("record_type_id", recordTypeSFId);
-		childrenData = childrenData.withColumn("CalculatedCSTier", calculatedCSTier);
+		childrenData = childrenData.withColumn("calculatedAccountType", calculatedAccountType);
 		
 		childrenData.show();
 		
 		Dataset<Row> mutatedChildrenData = childrenData;
 		mutatedChildrenData.createOrReplaceTempView("mutatedChildrenData");
 		
-		Dataset<Row> joinedData = spark.sql("select a.* from mutatedChildrenData as a where a.accountType <> 'INACTIVE' order by a.company");
+		Dataset<Row> joinedData = spark.sql("select a.* from mutatedChildrenData as a where (a.accountType <> 'INACTIVE' or a.accountType <> 'FREE') order by a.accountType");
 		
 		/*
 		Dataset<Row> joinedData = spark.sql("select a.*, b._c0 as parent_id from mutatedChildrenData as a left join parentData as b on a._c3 = getCustomerCode(b._c0) where a._c4 <> 'INACTIVE' "
