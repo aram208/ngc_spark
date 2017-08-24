@@ -32,7 +32,7 @@ public class ChildrenAccountsPreprocessor {
 				.master("local")
 				.getOrCreate();
 		
-		Dataset<Row> childrenData = spark.read().option("header", true).csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_all_children.csv");
+		Dataset<Row> childrenData = spark.read().option("header", true).csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_children_all.csv");
 		childrenData.show();
 		
 //		Dataset<Row> parentData = spark.read().option("header", true).csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_all_parents.csv");
@@ -123,7 +123,7 @@ public class ChildrenAccountsPreprocessor {
 		
 		joinedData.show();
 		*/
-		joinedData.write().csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_children_processed.csv");
+		joinedData.write().option("header", "true").csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_children_processed_all.csv");
 		
 		spark.stop();
 	}
