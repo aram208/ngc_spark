@@ -32,7 +32,7 @@ public class ChildrenAccountsProcessor {
 				.master("local")
 				.getOrCreate();
 		
-		Dataset<Row> childrenData = spark.read().option("header", true).csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_children_all.csv");
+		Dataset<Row> childrenData = spark.read().option("header", true).csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_bulk_all.csv");
 		childrenData.show();
 		
 //		Dataset<Row> parentData = spark.read().option("header", true).csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_all_parents.csv");
@@ -77,16 +77,17 @@ public class ChildrenAccountsProcessor {
 		
 		Column calculatedAccountType = 
 				 when(col("accountType").equalTo("DEALER"), lit("Dealer"))
-				.when(col("accountType").equalTo("ACTIVE"), lit("None"))
-				.when(col("accountType").equalTo("ANA"), lit("None"))
+				.when(col("accountType").equalTo("ACTIVE"), lit("Active"))
+				.when(col("accountType").equalTo("ANA"), lit("ANA"))
 				.when(col("accountType").equalTo("ASSOC"), lit("Associate"))
-				.when(col("accountType").equalTo("CANCEL"), lit("None"))
-				.when(col("accountType").equalTo("CHARTER"), lit("None"))
+				.when(col("accountType").equalTo("CANCEL"), lit("Cancel"))
+				.when(col("accountType").equalTo("CHARTER"), lit("Charter"))
 				.when(col("accountType").equalTo("ELITE"), lit("Elite"))
 				.when(col("accountType").equalTo("FREE"), lit("Free"))
 				.when(col("accountType").equalTo("PREM"), lit("Premium"))
-				.when(col("accountType").equalTo("SUB"), lit("None"))
+				.when(col("accountType").equalTo("SUB"), lit("SUB"))
 				.when(col("accountType").equalTo("UNKNOWN"), lit("None"))
+				.when(col("accountType").equalTo("PARENT"), lit("Parent"))
 				.otherwise(lit("None"));
 		
 		Column emailC = when(callUDF("isValidEmail", col("contact_email")), col("contact_email")).otherwise(lit("email@unkown.com")); 
@@ -108,20 +109,21 @@ public class ChildrenAccountsProcessor {
 		childrenData = childrenData.withColumn("composite_street", rtrim(concat_ws(" ", col("contact_address_address1"), col("contact_address_address2"), col("contact_address_address3"))));
 		childrenData = childrenData.withColumn("composite_notes", rtrim(concat_ws(" ", col("notes_note1"), col("notes_note2"))));
 		childrenData = childrenData.withColumn("record_type_id", recordTypeSFId);
-		childrenData = childrenData.withColumn("calculatedAccountType", calculatedAccountType);
+		childrenData = childrenData.withColumn("accountType", calculatedAccountType);
 		
 		childrenData.show();
 		
 		Dataset<Row> mutatedChildrenData = childrenData;
 		mutatedChildrenData.createOrReplaceTempView("mutatedChildrenData");
 		
-		Dataset<Row> joinedData = spark.sql("select a.* from mutatedChildrenData as a where (a.accountType <> 'INACTIVE' or a.accountType <> 'FREE') order by a.accountType");
+		Dataset<Row> joinedData = spark.sql("select a.* from mutatedChildrenData as a where "
+				+ "a.accountType in ('Dealer', 'Active', 'ANA', 'Associate', 'Charter', 'Elite', 'Premium', 'SUB', 'Parent') "
+				+ "order by a.accountType");
 		
 		/*
 		Dataset<Row> joinedData = spark.sql("select a.*, b._c0 as parent_id from mutatedChildrenData as a left join parentData as b on a._c3 = getCustomerCode(b._c0) where a._c4 <> 'INACTIVE' "
 				+ "and (a._c2 = 'NGC' or (a._c2 = 'NCS' or a._c2 = 'PMG')) order by a._c2");
-		
-		joinedData.show();
+
 		*/
 		joinedData.write().option("header", "true").csv("C:\\Users\\Alien\\Downloads\\Accounts\\bulk_loading\\accounts_children_processed_all.csv");
 		

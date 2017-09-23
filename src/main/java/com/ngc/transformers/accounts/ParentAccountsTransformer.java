@@ -30,7 +30,7 @@ public class ParentAccountsTransformer {
 			}
 		}, DataTypes.StringType);
 		
-		Column accounType = when(col("accountType").equalTo("PARENT"), lit("01241000000RoOs"));
+		Column accounType = when(col("accountType").equalTo("Parent"), lit("01241000000RoOs"));
 		
 		Column name = when(col("primaryContactPerson").contains("\"").or(col("primaryContactPerson").contains(",")), 
 				callUDF("escapeCsv",col("primaryContactPerson"))).otherwise(col("primaryContactPerson"));

@@ -7,6 +7,8 @@ import static org.apache.spark.sql.functions.*;
 
 import org.apache.spark.sql.Column;
 
+// keeping this class for a reference, but I do not need this an more
+
 public class RemoveDuplicatesProcessor {
 
 	public static void main(String[] args){
